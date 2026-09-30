@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/ErenKarakus1/Matchmaking-System/rating-service/internal/models"
 	"github.com/ErenKarakus1/Matchmaking-System/rating-service/internal/repository"
 	"github.com/ErenKarakus1/Matchmaking-System/rating-service/internal/service"
 	"github.com/gin-gonic/gin"
@@ -58,5 +59,43 @@ func GetPlayerRatingHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(http.StatusOK, rating)
+	}
+}
+
+func CreateMatchHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req models.CreateMatchRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
+		}
+		if req.WinnerID == req.LoserID {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "winner id and loser id cannot be same"})
+			return
+		}
+		matchID := ctx.Param("match_id")
+		if matchID == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "match id is required"})
+			return
+		}
+		parsedMatchID, err := uuid.Parse(matchID)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid match id"})
+			return
+		}
+		match, err := service.CreateMatch(ctx.Request.Context(), pool, parsedMatchID, req.WinnerID, req.LoserID)
+		if err != nil {
+			if errors.Is(err, repository.ErrRatingNotFound) {
+				ctx.JSON(http.StatusNotFound, gin.H{"error": "winner or loser id was not found"})
+				return
+			}
+			if errors.Is(err, repository.ErrMatchAlreadyExists) {
+				ctx.JSON(http.StatusConflict, gin.H{"error": "match already exists"})
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		ctx.JSON(http.StatusCreated, match)
 	}
 }

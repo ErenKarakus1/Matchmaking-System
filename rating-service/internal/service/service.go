@@ -31,3 +31,14 @@ func GetPlayerRatingByPlayerID(ctx context.Context, pool *pgxpool.Pool, playerID
 	}
 	return rating, nil
 }
+
+func CreateMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID, winnerID uuid.UUID, loserID uuid.UUID) (models.Match, error) {
+	match, err := repository.SubmitMatchResult(ctx, pool, matchID, winnerID, loserID)
+	if err != nil {
+		if errors.Is(err, repository.ErrRatingNotFound) || errors.Is(err, repository.ErrMatchAlreadyExists) {
+			return models.Match{}, err
+		}
+		return models.Match{}, errors.New("internal server error")
+	}
+	return match, nil
+}
