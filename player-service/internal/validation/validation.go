@@ -24,3 +24,19 @@ func ValidateCreatePlayerRequest(req models.CreatePlayerRequest) error {
 	}
 	return nil
 }
+
+func ValidateUsername(username string) error {
+	if username == "" {
+		return errors.New("username is required")
+	}
+	if len(username) < 3 {
+		return errors.New("username must be at least 3 characters")
+	}
+	if len(username) > 32 {
+		return errors.New("username must be at most 32 characters")
+	}
+	if !usernameRegex.MatchString(username) {
+		return errors.New("username can only contain lowercase letters, numbers, and underscores")
+	}
+	return nil
+}

@@ -28,3 +28,25 @@ func CreatePlayer(ctx context.Context, pool *pgxpool.Pool, req models.CreatePlay
 	}
 	return createdPlayer, nil
 }
+
+func GetPlayerByID(ctx context.Context, pool *pgxpool.Pool, playerID uuid.UUID) (models.Player, error) {
+	player, err := repository.GetPlayerByID(ctx, pool, playerID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPlayerNotFound) {
+			return models.Player{}, err
+		}
+		return models.Player{}, errors.New("internal server error")
+	}
+	return player, nil
+}
+
+func GetPlayerByUsername(ctx context.Context, pool *pgxpool.Pool, username string) (models.Player, error) {
+	player, err := repository.GetPlayerByUsername(ctx, pool, username)
+	if err != nil {
+		if errors.Is(err, repository.ErrPlayerNotFound) {
+			return models.Player{}, err
+		}
+		return models.Player{}, errors.New("internal server error")
+	}
+	return player, nil
+}
