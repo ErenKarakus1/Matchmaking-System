@@ -23,16 +23,14 @@ const insertPlayerSQL = `
 	RETURNING
 		id,
 		username,
-		created_at,
-		updated_at
+		created_at
 `
 
 const getPlayerByIDSQL = `
 	SELECT
 		id,
 		username,
-		created_at,
-		updated_at
+		created_at
 	FROM players
 	WHERE id=$1
 `
@@ -41,8 +39,7 @@ const getPlayerByUsernameSQL = `
 	SELECT
 		id,
 		username,
-		created_at,
-		updated_at
+		created_at
 	FROM players
 	WHERE username=$1
 `
@@ -58,7 +55,6 @@ func InsertPlayer(ctx context.Context, pool *pgxpool.Pool, player models.Player)
 		&createdPlayer.ID,
 		&createdPlayer.Username,
 		&createdPlayer.CreatedAt,
-		&createdPlayer.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -80,7 +76,6 @@ func GetPlayerByID(ctx context.Context, pool *pgxpool.Pool, playerID uuid.UUID) 
 		&player.ID,
 		&player.Username,
 		&player.CreatedAt,
-		&player.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -101,7 +96,6 @@ func GetPlayerByUsername(ctx context.Context, pool *pgxpool.Pool, username strin
 		&player.ID,
 		&player.Username,
 		&player.CreatedAt,
-		&player.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
