@@ -20,3 +20,14 @@ func CreatePlayerRating(ctx context.Context, pool *pgxpool.Pool, playerID uuid.U
 	}
 	return rating, nil
 }
+
+func GetPlayerRatingByPlayerID(ctx context.Context, pool *pgxpool.Pool, playerID uuid.UUID) (models.Rating, error) {
+	rating, err := repository.GetRatingByPlayerID(ctx, pool, playerID)
+	if err != nil {
+		if errors.Is(err, repository.ErrRatingNotFound) {
+			return models.Rating{}, err
+		}
+		return models.Rating{}, errors.New("internal server error")
+	}
+	return rating, nil
+}

@@ -20,6 +20,7 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/ratings/players/:player_id", handlers.CreatePlayerRatingHandler(pool))
+	router.GET("/ratings/players/:player_id", handlers.GetPlayerRatingByPlayerIDHandler(pool))
 
 	if err := router.Run(":8081"); err != nil {
 		log.Fatal(err)
