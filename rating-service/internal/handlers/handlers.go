@@ -36,7 +36,7 @@ func CreatePlayerRatingHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 	}
 }
 
-func GetPlayerRatingByPlayerIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+func GetPlayerRatingHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		playerID := ctx.Param("player_id")
 		if playerID == "" {
