@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS ratings (
+    player_id UUID PRIMARY KEY,
+    rating INT NOT NULL DEFAULT 1500,
+    games_played INT NOT NULL DEFAULT 0,
+    wins INT NOT NULL DEFAULT 0,
+    losses INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
