@@ -99,3 +99,28 @@ func CreateMatchHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		ctx.JSON(http.StatusCreated, match)
 	}
 }
+
+func GetMatchHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		matchID := ctx.Param("match_id")
+		if matchID == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "match id is required"})
+			return
+		}
+		parsedMatchID, err := uuid.Parse(matchID)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid match id"})
+			return
+		}
+		match, err := service.GetMatch(ctx.Request.Context(), pool, parsedMatchID)
+		if err != nil {
+			if errors.Is(err, repository.ErrMatchNotFound) {
+				ctx.JSON(http.StatusNotFound, gin.H{"error": "match not found"})
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		ctx.JSON(http.StatusOK, match)
+	}
+}

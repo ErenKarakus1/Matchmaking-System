@@ -15,6 +15,7 @@ import (
 var ErrRatingAlreadyExists = errors.New("rating already exists")
 var ErrRatingNotFound = errors.New("rating not found")
 var ErrMatchAlreadyExists = errors.New("match already exists")
+var ErrMatchNotFound = errors.New("match not found")
 
 const insertRatingSQL = `
 	INSERT INTO ratings (
@@ -90,6 +91,20 @@ const insertMatchSQL = `
 		winner_rating_after,
 		loser_rating_after,
 		created_at
+`
+
+const getMatchSQL = `
+	SELECT
+		id,
+		winner_id,
+		loser_id,
+		winner_rating_before,
+		loser_rating_before,
+		winner_rating_after,
+		loser_rating_after,
+		created_at
+	FROM matches
+	WHERE id=$1
 `
 
 const kFactor = 32
@@ -287,5 +302,30 @@ func SubmitMatchResult(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUI
 		return models.Match{}, errors.New("internal server error")
 	}
 
+	return match, nil
+}
+
+func GetMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID) (models.Match, error) {
+	var match models.Match
+	err := pool.QueryRow(
+		ctx,
+		getMatchSQL,
+		matchID,
+	).Scan(
+		&match.ID,
+		&match.WinnerID,
+		&match.LoserID,
+		&match.WinnerRatingBefore,
+		&match.LoserRatingBefore,
+		&match.WinnerRatingAfter,
+		&match.LoserRatingAfter,
+		&match.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Match{}, ErrMatchNotFound
+		}
+		return models.Match{}, errors.New("internal server error")
+	}
 	return match, nil
 }

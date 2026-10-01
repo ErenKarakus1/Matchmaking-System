@@ -42,3 +42,14 @@ func CreateMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID, win
 	}
 	return match, nil
 }
+
+func GetMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID) (models.Match, error) {
+	match, err := repository.GetMatch(ctx, pool, matchID)
+	if err != nil {
+		if errors.Is(err, repository.ErrMatchNotFound) {
+			return models.Match{}, err
+		}
+		return models.Match{}, errors.New("internal server error")
+	}
+	return match, nil
+}
