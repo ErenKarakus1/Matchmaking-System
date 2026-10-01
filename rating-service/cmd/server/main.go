@@ -24,6 +24,7 @@ func main() {
 	router.POST("/ratings/matches/:match_id/result", handlers.CreateMatchHandler(pool))
 	router.GET("/ratings/matches/:match_id", handlers.GetMatchHandler(pool))
 	router.GET("/ratings/leaderboard", handlers.GetLeaderboardHandler(pool))
+	router.GET("/ratings/players/:player_id/matches", handlers.GetPlayerMatchesHandler(pool))
 
 	if err := router.Run(":8081"); err != nil {
 		log.Fatal(err)

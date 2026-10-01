@@ -61,3 +61,20 @@ func GetLeaderboard(ctx context.Context, pool *pgxpool.Pool) ([]models.Leaderboa
 	}
 	return leaderboard, nil
 }
+
+func GetPlayerMatches(ctx context.Context, pool *pgxpool.Pool, playerID uuid.UUID) ([]models.Match, error) {
+	_, err := repository.GetRatingByPlayerID(ctx, pool, playerID)
+	if err != nil {
+		if errors.Is(err, repository.ErrRatingNotFound) {
+			return []models.Match{}, err
+		}
+		return []models.Match{}, errors.New("internal server error")
+	}
+
+	matches, err := repository.GetPlayerMatches(ctx, pool, playerID)
+	if err != nil {
+		return []models.Match{}, errors.New("internal server error")
+	}
+
+	return matches, nil
+}

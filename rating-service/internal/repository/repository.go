@@ -119,6 +119,22 @@ const getLeaderboardSQL = `
 	LIMIT 100
 `
 
+const getPlayerMatchesSQL = `
+	SELECT
+		id,
+		winner_id,
+		loser_id,
+		winner_rating_before,
+		loser_rating_before,
+		winner_rating_after,
+		loser_rating_after,
+		created_at
+	FROM matches
+	WHERE winner_id=$1 OR loser_id=$1
+	ORDER BY created_at DESC
+	LIMIT 50
+`
+
 const kFactor = 32
 
 func expectedScore(playerRating, opponentRating int) float64 {
@@ -375,4 +391,42 @@ func GetLeaderboard(ctx context.Context, pool *pgxpool.Pool) ([]models.Leaderboa
 		return []models.LeaderboardEntry{}, errors.New("internal server error")
 	}
 	return leaderboard, nil
+}
+
+func GetPlayerMatches(ctx context.Context, pool *pgxpool.Pool, playerID uuid.UUID) ([]models.Match, error) {
+	var matches []models.Match
+
+	rows, err := pool.Query(
+		ctx,
+		getPlayerMatchesSQL,
+		playerID,
+	)
+	if err != nil {
+		return []models.Match{}, errors.New("internal server error")
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var match models.Match
+		err := rows.Scan(
+			&match.ID,
+			&match.WinnerID,
+			&match.LoserID,
+			&match.WinnerRatingBefore,
+			&match.LoserRatingBefore,
+			&match.WinnerRatingAfter,
+			&match.LoserRatingAfter,
+			&match.CreatedAt,
+		)
+		if err != nil {
+			return []models.Match{}, errors.New("internal server error")
+		}
+		matches = append(matches, match)
+	}
+
+	if err := rows.Err(); err != nil {
+		return []models.Match{}, errors.New("internal server error")
+	}
+
+	return matches, nil
 }
