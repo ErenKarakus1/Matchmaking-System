@@ -124,3 +124,17 @@ func GetMatchHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, match)
 	}
 }
+
+func GetLeaderboardHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		leaderboard, err := service.GetLeaderboard(ctx.Request.Context(), pool)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		if leaderboard == nil {
+			leaderboard = []models.LeaderboardEntry{}
+		}
+		ctx.JSON(http.StatusOK, leaderboard)
+	}
+}

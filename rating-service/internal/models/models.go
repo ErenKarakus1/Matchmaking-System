@@ -31,3 +31,12 @@ type CreateMatchRequest struct {
 	WinnerID uuid.UUID `json:"winner_id"`
 	LoserID  uuid.UUID `json:"loser_id"`
 }
+
+type LeaderboardEntry struct {
+	Rank        int       `json:"rank"`
+	PlayerID    uuid.UUID `json:"player_id"`
+	Rating      int       `json:"rating"`
+	GamesPlayed int       `json:"games_played"`
+	Wins        int       `json:"wins"`
+	Losses      int       `json:"losses"`
+}

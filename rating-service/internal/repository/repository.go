@@ -107,6 +107,18 @@ const getMatchSQL = `
 	WHERE id=$1
 `
 
+const getLeaderboardSQL = `
+	SELECT
+		player_id,
+		rating,
+		games_played,
+		wins,
+		losses
+	FROM ratings
+	ORDER BY rating DESC
+	LIMIT 100
+`
+
 const kFactor = 32
 
 func expectedScore(playerRating, opponentRating int) float64 {
@@ -328,4 +340,39 @@ func GetMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID) (model
 		return models.Match{}, errors.New("internal server error")
 	}
 	return match, nil
+}
+
+func GetLeaderboard(ctx context.Context, pool *pgxpool.Pool) ([]models.LeaderboardEntry, error) {
+	var leaderboard []models.LeaderboardEntry
+
+	rows, err := pool.Query(
+		ctx,
+		getLeaderboardSQL,
+	)
+	if err != nil {
+		return []models.LeaderboardEntry{}, errors.New("internal server error")
+	}
+	defer rows.Close()
+
+	rank := 1
+	for rows.Next() {
+		var entry models.LeaderboardEntry
+		err := rows.Scan(
+			&entry.PlayerID,
+			&entry.Rating,
+			&entry.GamesPlayed,
+			&entry.Wins,
+			&entry.Losses,
+		)
+		if err != nil {
+			return []models.LeaderboardEntry{}, errors.New("internal server error")
+		}
+		entry.Rank = rank
+		rank++
+		leaderboard = append(leaderboard, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return []models.LeaderboardEntry{}, errors.New("internal server error")
+	}
+	return leaderboard, nil
 }

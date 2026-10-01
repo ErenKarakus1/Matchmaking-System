@@ -53,3 +53,11 @@ func GetMatch(ctx context.Context, pool *pgxpool.Pool, matchID uuid.UUID) (model
 	}
 	return match, nil
 }
+
+func GetLeaderboard(ctx context.Context, pool *pgxpool.Pool) ([]models.LeaderboardEntry, error) {
+	leaderboard, err := repository.GetLeaderboard(ctx, pool)
+	if err != nil {
+		return []models.LeaderboardEntry{}, errors.New("internal server error")
+	}
+	return leaderboard, nil
+}
