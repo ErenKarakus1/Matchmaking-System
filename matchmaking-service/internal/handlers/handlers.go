@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/models"
@@ -18,6 +19,10 @@ func CreateTicketHandler(client *redis.Client) gin.HandlerFunc {
 		}
 		ticket, err := service.CreateTicket(ctx.Request.Context(), client, req.PlayerID)
 		if err != nil {
+			if errors.Is(err, service.ErrAlreadyQueued) {
+				ctx.JSON(http.StatusConflict, gin.H{"error": "player is already queued"})
+				return
+			}
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 			return
 		}
