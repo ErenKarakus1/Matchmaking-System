@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	TicketStatusQueued    = "queued"
-	TicketStatusMatched   = "matched"
-	TicketStatusCancelled = "cancelled"
+	TicketStatusQueued  = "queued"
+	TicketStatusMatched = "matched"
 )
 
 var ErrAlreadyQueued = errors.New("player is already queued")
 var ErrTicketNotFound = errors.New("ticket not found")
+var ErrTicketNotQueued = errors.New("ticket is not queued")
 
 func generateTicket(playerID uuid.UUID) models.Ticket {
 	return models.Ticket{
@@ -35,7 +35,7 @@ func CreateTicket(ctx context.Context, client *redis.Client, playerID uuid.UUID)
 	if err == nil {
 		return models.Ticket{}, ErrAlreadyQueued
 	}
-	if err != nil && !errors.Is(err, redis.Nil) {
+	if !errors.Is(err, redis.Nil) {
 		return models.Ticket{}, errors.New("internal server error")
 	}
 
@@ -78,4 +78,38 @@ func GetTicket(ctx context.Context, client *redis.Client, ticketID uuid.UUID) (m
 	}
 
 	return ticket, nil
+}
+
+func DeleteTicket(ctx context.Context, client *redis.Client, ticketID uuid.UUID) error {
+	ticketKey := "ticket:" + ticketID.String()
+	ticketBytes, err := client.Get(ctx, ticketKey).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return ErrTicketNotFound
+		}
+		return errors.New("internal server error")
+	}
+	var ticket models.Ticket
+	err = json.Unmarshal([]byte(ticketBytes), &ticket)
+	if err != nil {
+		return errors.New("internal server error")
+	}
+
+	if ticket.Status != TicketStatusQueued {
+		return ErrTicketNotQueued
+	}
+
+	pipe := client.TxPipeline()
+
+	pipe.Del(ctx, ticketKey)
+	playerTicketKey := "player_ticket:" + ticket.PlayerID.String()
+	pipe.Del(ctx, playerTicketKey)
+	pipe.ZRem(ctx, "queue", ticketID.String())
+
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return errors.New("internal server error")
+	}
+
+	return nil
 }

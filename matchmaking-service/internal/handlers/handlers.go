@@ -58,3 +58,34 @@ func GetTicketHandler(client *redis.Client) gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, ticket)
 	}
 }
+
+func DeleteTicketHandler(client *redis.Client) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ticketID := ctx.Param("ticket_id")
+		if ticketID == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "ticket id is required"})
+			return
+		}
+
+		parsedTicketID, err := uuid.Parse(ticketID)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid ticket id"})
+			return
+		}
+
+		err = service.DeleteTicket(ctx.Request.Context(), client, parsedTicketID)
+		if err != nil {
+			if errors.Is(err, service.ErrTicketNotFound) {
+				ctx.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+				return
+			}
+			if errors.Is(err, service.ErrTicketNotQueued) {
+				ctx.JSON(http.StatusConflict, gin.H{"error": "ticket is not queued"})
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
