@@ -22,6 +22,7 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/matchmaking/tickets", handlers.CreateTicketHandler(client))
+	router.GET("/matchmaking/tickets/:ticket_id", handlers.GetTicketHandler(client))
 
 	if err := router.Run(":8082"); err != nil {
 		log.Fatal(err)
