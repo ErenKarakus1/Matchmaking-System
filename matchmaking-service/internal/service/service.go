@@ -113,3 +113,28 @@ func DeleteTicket(ctx context.Context, client *redis.Client, ticketID uuid.UUID)
 
 	return nil
 }
+
+func GetQueue(ctx context.Context, client *redis.Client) ([]models.Ticket, error) {
+	ticketIDs, err := client.ZRange(ctx, "queue", 0, 49).Result()
+	if err != nil {
+		return []models.Ticket{}, errors.New("internal server error")
+	}
+	var queue []models.Ticket
+	for _, ticketID := range ticketIDs {
+		key := "ticket:" + ticketID
+		ticketBytes, err := client.Get(ctx, key).Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				continue
+			}
+			return []models.Ticket{}, errors.New("internal server error")
+		}
+		var ticket models.Ticket
+		err = json.Unmarshal([]byte(ticketBytes), &ticket)
+		if err != nil {
+			return []models.Ticket{}, errors.New("internal server error")
+		}
+		queue = append(queue, ticket)
+	}
+	return queue, nil
+}

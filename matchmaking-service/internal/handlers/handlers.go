@@ -89,3 +89,17 @@ func DeleteTicketHandler(client *redis.Client) gin.HandlerFunc {
 		ctx.Status(http.StatusNoContent)
 	}
 }
+
+func GetQueueHandler(client *redis.Client) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		queue, err := service.GetQueue(ctx.Request.Context(), client)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		if queue == nil {
+			queue = []models.Ticket{}
+		}
+		ctx.JSON(http.StatusOK, queue)
+	}
+}
