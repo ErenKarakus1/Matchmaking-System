@@ -26,6 +26,7 @@ func main() {
 	router.DELETE("/matchmaking/tickets/:ticket_id", handlers.DeleteTicketHandler(client))
 	router.GET("/matchmaking/queue", handlers.GetQueueHandler(client))
 	router.POST("/matchmaking/matches", handlers.CreateMatchHandler(client))
+	router.GET("/matchmaking/matches/:match_id", handlers.GetMatchHandler(client))
 
 	if err := router.Run(":8082"); err != nil {
 		log.Fatal(err)

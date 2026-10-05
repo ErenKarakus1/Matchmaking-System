@@ -20,6 +20,7 @@ var ErrAlreadyQueued = errors.New("player is already queued")
 var ErrTicketNotFound = errors.New("ticket not found")
 var ErrTicketNotQueued = errors.New("ticket is not queued")
 var ErrNotEnoughPlayers = errors.New("not enough players")
+var ErrMatchNotFound = errors.New("match not found")
 
 func generateTicket(playerID uuid.UUID) models.Ticket {
 	return models.Ticket{
@@ -213,6 +214,21 @@ func CreateMatch(ctx context.Context, client *redis.Client) (models.Match, error
 	pipe.Set(ctx, "match:"+match.MatchID.String(), matchBytes, 0)
 	_, err = pipe.Exec(ctx)
 	if err != nil {
+		return models.Match{}, errors.New("internal server error")
+	}
+	return match, nil
+}
+
+func GetMatch(ctx context.Context, client *redis.Client, matchID uuid.UUID) (models.Match, error) {
+	matchBytes, err := client.Get(ctx, "match:"+matchID.String()).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return models.Match{}, ErrMatchNotFound
+		}
+		return models.Match{}, errors.New("internal server error")
+	}
+	var match models.Match
+	if err := json.Unmarshal([]byte(matchBytes), &match); err != nil {
 		return models.Match{}, errors.New("internal server error")
 	}
 	return match, nil
