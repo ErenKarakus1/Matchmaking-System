@@ -19,6 +19,7 @@ const (
 var ErrAlreadyQueued = errors.New("player is already queued")
 var ErrTicketNotFound = errors.New("ticket not found")
 var ErrTicketNotQueued = errors.New("ticket is not queued")
+var ErrNotEnoughPlayers = errors.New("not enough players")
 
 func generateTicket(playerID uuid.UUID) models.Ticket {
 	return models.Ticket{
@@ -27,6 +28,36 @@ func generateTicket(playerID uuid.UUID) models.Ticket {
 		Status:    TicketStatusQueued,
 		CreatedAt: time.Now().UTC(),
 	}
+}
+
+func selectTicketsForMatch(ctx context.Context, client *redis.Client) ([]models.Ticket, error) {
+	ticketIDs, err := client.ZRange(ctx, "queue", 0, 9).Result()
+	if err != nil {
+		return []models.Ticket{}, errors.New("internal server error")
+	}
+	if len(ticketIDs) < 2 {
+		return []models.Ticket{}, ErrNotEnoughPlayers
+	}
+	var tickets []models.Ticket
+	for _, ticketID := range ticketIDs {
+		key := "ticket:" + ticketID
+		ticketBytes, err := client.Get(ctx, key).Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				continue
+			}
+			return []models.Ticket{}, errors.New("internal server error")
+		}
+		var ticket models.Ticket
+		if err := json.Unmarshal([]byte(ticketBytes), &ticket); err != nil {
+			return []models.Ticket{}, errors.New("internal server error")
+		}
+		tickets = append(tickets, ticket)
+	}
+	if len(tickets) < 2 {
+		return []models.Ticket{}, ErrNotEnoughPlayers
+	}
+	return tickets, nil
 }
 
 func CreateTicket(ctx context.Context, client *redis.Client, playerID uuid.UUID) (models.Ticket, error) {
@@ -137,4 +168,52 @@ func GetQueue(ctx context.Context, client *redis.Client) ([]models.Ticket, error
 		queue = append(queue, ticket)
 	}
 	return queue, nil
+}
+
+func CreateMatch(ctx context.Context, client *redis.Client) (models.Match, error) {
+	tickets, err := selectTicketsForMatch(ctx, client)
+	if err != nil {
+		if errors.Is(err, ErrNotEnoughPlayers) {
+			return models.Match{}, err
+		}
+		return models.Match{}, errors.New("internal server error")
+	}
+	ticketA := tickets[0]
+	ticketB := tickets[1]
+	match := models.Match{
+		MatchID:   uuid.New(),
+		PlayerAID: ticketA.PlayerID,
+		PlayerBID: ticketB.PlayerID,
+		TicketAID: ticketA.TicketID,
+		TicketBID: ticketB.TicketID,
+		CreatedAt: time.Now().UTC(),
+	}
+	matchBytes, err := json.Marshal(match)
+	if err != nil {
+		return models.Match{}, errors.New("internal server error")
+	}
+	ticketA.Status = TicketStatusMatched
+	ticketB.Status = TicketStatusMatched
+	ticketABytes, err := json.Marshal(ticketA)
+	if err != nil {
+		return models.Match{}, errors.New("internal server error")
+	}
+	ticketBBytes, err := json.Marshal(ticketB)
+	if err != nil {
+		return models.Match{}, errors.New("internal server error")
+	}
+
+	pipe := client.TxPipeline()
+	pipe.Set(ctx, "ticket:"+ticketA.TicketID.String(), ticketABytes, 0)
+	pipe.Set(ctx, "ticket:"+ticketB.TicketID.String(), ticketBBytes, 0)
+	pipe.ZRem(ctx, "queue", ticketA.TicketID.String())
+	pipe.ZRem(ctx, "queue", ticketB.TicketID.String())
+	pipe.Del(ctx, "player_ticket:"+ticketA.PlayerID.String())
+	pipe.Del(ctx, "player_ticket:"+ticketB.PlayerID.String())
+	pipe.Set(ctx, "match:"+match.MatchID.String(), matchBytes, 0)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return models.Match{}, errors.New("internal server error")
+	}
+	return match, nil
 }

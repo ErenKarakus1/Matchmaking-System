@@ -103,3 +103,18 @@ func GetQueueHandler(client *redis.Client) gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, queue)
 	}
 }
+
+func CreateMatchHandler(client *redis.Client) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		match, err := service.CreateMatch(ctx.Request.Context(), client)
+		if err != nil {
+			if errors.Is(err, service.ErrNotEnoughPlayers) {
+				ctx.JSON(http.StatusConflict, gin.H{"error": "not enough players"})
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		ctx.JSON(http.StatusCreated, match)
+	}
+}
