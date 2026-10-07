@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package rating.v1;
+
+option go_package = "github.com/ErenKarakus1/Matchmaking-System/proto/rating/v1;ratingv1";
+
+service RatingService {
+  rpc GetPlayerRating(GetPlayerRatingRequest) returns (GetPlayerRatingResponse);
+}
+
+message GetPlayerRatingRequest {
+  string player_id = 1;
+}
+
+message GetPlayerRatingResponse {
+  string player_id = 1;
+  int32 rating = 2;
+  int32 games_played = 3;
+  int32 wins = 4;
+  int32 losses = 5;
+}
