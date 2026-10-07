@@ -193,10 +193,12 @@ func CreateMatch(ctx context.Context, client *redis.Client) (models.Match, error
 	if err != nil {
 		return models.Match{}, errors.New("internal server error")
 	}
+
 	ticketA.Status = TicketStatusMatched
 	ticketA.MatchID = &match.MatchID
 	ticketB.Status = TicketStatusMatched
 	ticketB.MatchID = &match.MatchID
+
 	ticketABytes, err := json.Marshal(ticketA)
 	if err != nil {
 		return models.Match{}, errors.New("internal server error")
