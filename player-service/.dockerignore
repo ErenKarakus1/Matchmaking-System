@@ -1,0 +1,10 @@
+.env
+.git
+.gitignore
+Dockerfile
+tmp
+dist
+bin
+*.exe
+*.test
+coverage.out

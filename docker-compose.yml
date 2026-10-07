@@ -1,0 +1,86 @@
+services:
+  player-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: player_service
+    ports:
+      - "5433:5432"
+    volumes:
+      - player-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d player_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rating-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rating_service
+    ports:
+      - "5434:5432"
+    volumes:
+      - rating-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rating_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  player-service:
+    build:
+      context: ./player-service
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@player-db:5432/player_service?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      player-db:
+        condition: service_healthy
+
+  rating-service:
+    build:
+      context: ./rating-service
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@rating-db:5432/rating_service?sslmode=disable
+    ports:
+      - "8081:8081"
+      - "9091:9091"
+    depends_on:
+      rating-db:
+        condition: service_healthy
+
+  matchmaking-service:
+    build:
+      context: ./matchmaking-service
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RATING_GRPC_URL: rating-service:9091
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rating-service:
+        condition: service_started
+
+volumes:
+  player-db-data:
+  rating-db-data:
+  redis-data:
