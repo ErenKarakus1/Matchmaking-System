@@ -9,6 +9,7 @@ services:
       - "5433:5432"
     volumes:
       - player-db-data:/var/lib/postgresql/data
+      - ./player-service/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d player_service"]
       interval: 5s
@@ -25,6 +26,8 @@ services:
       - "5434:5432"
     volumes:
       - rating-db-data:/var/lib/postgresql/data
+      - ./rating-service/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./rating-service/migrations/002_matches.sql:/docker-entrypoint-initdb.d/002_matches.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d rating_service"]
       interval: 5s
