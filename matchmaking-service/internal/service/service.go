@@ -16,6 +16,10 @@ const (
 	TicketStatusMatched = "matched"
 )
 
+type RatingProvider interface {
+	GetPlayerRating(ctx context.Context, playerID uuid.UUID) (int, error)
+}
+
 var ErrAlreadyQueued = errors.New("player is already queued")
 var ErrTicketNotFound = errors.New("ticket not found")
 var ErrTicketNotQueued = errors.New("ticket is not queued")
@@ -31,7 +35,14 @@ func generateTicket(playerID uuid.UUID) models.Ticket {
 	}
 }
 
-func selectTicketsForMatch(ctx context.Context, client *redis.Client) ([]models.Ticket, error) {
+func abs(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func selectTicketsForMatch(ctx context.Context, client *redis.Client, ratingProvider RatingProvider) ([]models.Ticket, error) {
 	ticketIDs, err := client.ZRange(ctx, "queue", 0, 9).Result()
 	if err != nil {
 		return []models.Ticket{}, errors.New("internal server error")
@@ -58,7 +69,33 @@ func selectTicketsForMatch(ctx context.Context, client *redis.Client) ([]models.
 	if len(tickets) < 2 {
 		return []models.Ticket{}, ErrNotEnoughPlayers
 	}
-	return tickets, nil
+
+	bestA := 0
+	bestB := 1
+	bestDiff := -1
+
+	for i := 0; i < len(tickets); i++ {
+		ratingI, err := ratingProvider.GetPlayerRating(ctx, tickets[i].PlayerID)
+		if err != nil {
+			return []models.Ticket{}, errors.New("internal server error")
+		}
+
+		for j := i + 1; j < len(tickets); j++ {
+			ratingJ, err := ratingProvider.GetPlayerRating(ctx, tickets[j].PlayerID)
+			if err != nil {
+				return []models.Ticket{}, errors.New("internal server error")
+			}
+
+			diff := abs(ratingI - ratingJ)
+			if bestDiff == -1 || diff < bestDiff {
+				bestA = i
+				bestB = j
+				bestDiff = diff
+			}
+		}
+	}
+
+	return []models.Ticket{tickets[bestA], tickets[bestB]}, nil
 }
 
 func CreateTicket(ctx context.Context, client *redis.Client, playerID uuid.UUID) (models.Ticket, error) {
@@ -171,8 +208,8 @@ func GetQueue(ctx context.Context, client *redis.Client) ([]models.Ticket, error
 	return queue, nil
 }
 
-func CreateMatch(ctx context.Context, client *redis.Client) (models.Match, error) {
-	tickets, err := selectTicketsForMatch(ctx, client)
+func CreateMatch(ctx context.Context, client *redis.Client, ratingProvider RatingProvider) (models.Match, error) {
+	tickets, err := selectTicketsForMatch(ctx, client, ratingProvider)
 	if err != nil {
 		if errors.Is(err, ErrNotEnoughPlayers) {
 			return models.Match{}, err
@@ -181,6 +218,7 @@ func CreateMatch(ctx context.Context, client *redis.Client) (models.Match, error
 	}
 	ticketA := tickets[0]
 	ticketB := tickets[1]
+
 	match := models.Match{
 		MatchID:   uuid.New(),
 		PlayerAID: ticketA.PlayerID,

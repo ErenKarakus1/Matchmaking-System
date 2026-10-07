@@ -8,9 +8,12 @@ import (
 
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/config"
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/handlers"
+	ratingclient "github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/ratingclient"
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -23,10 +26,16 @@ func main() {
 	client := redis.NewClient(options)
 	defer client.Close()
 
+	conn, err := grpc.NewClient(cfg.RatingGRPCURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+	ratingClient := ratingclient.New(conn)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	go startMatchmaker(ctx, client)
+	go startMatchmaker(ctx, client, ratingClient)
 
 	router := gin.Default()
 
@@ -34,7 +43,7 @@ func main() {
 	router.GET("/matchmaking/tickets/:ticket_id", handlers.GetTicketHandler(client))
 	router.DELETE("/matchmaking/tickets/:ticket_id", handlers.DeleteTicketHandler(client))
 	router.GET("/matchmaking/queue", handlers.GetQueueHandler(client))
-	router.POST("/matchmaking/matches", handlers.CreateMatchHandler(client))
+	router.POST("/matchmaking/matches", handlers.CreateMatchHandler(client, ratingClient))
 	router.GET("/matchmaking/matches/:match_id", handlers.GetMatchHandler(client))
 
 	if err := router.Run(":8082"); err != nil {
@@ -42,7 +51,7 @@ func main() {
 	}
 }
 
-func startMatchmaker(ctx context.Context, client *redis.Client) {
+func startMatchmaker(ctx context.Context, client *redis.Client, ratingClient *ratingclient.Client) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -51,7 +60,7 @@ func startMatchmaker(ctx context.Context, client *redis.Client) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			match, err := service.CreateMatch(ctx, client)
+			match, err := service.CreateMatch(ctx, client, ratingClient)
 			if err != nil {
 				if errors.Is(err, service.ErrNotEnoughPlayers) {
 					continue

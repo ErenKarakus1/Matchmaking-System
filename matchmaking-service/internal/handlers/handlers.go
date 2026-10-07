@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/models"
+	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/ratingclient"
 	"github.com/ErenKarakus1/Matchmaking-System/matchmaking-service/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -104,9 +105,9 @@ func GetQueueHandler(client *redis.Client) gin.HandlerFunc {
 	}
 }
 
-func CreateMatchHandler(client *redis.Client) gin.HandlerFunc {
+func CreateMatchHandler(client *redis.Client, ratingClient *ratingclient.Client) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		match, err := service.CreateMatch(ctx.Request.Context(), client)
+		match, err := service.CreateMatch(ctx.Request.Context(), client, ratingClient)
 		if err != nil {
 			if errors.Is(err, service.ErrNotEnoughPlayers) {
 				ctx.JSON(http.StatusConflict, gin.H{"error": "not enough players"})

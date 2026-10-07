@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	RedisURL string
+	RedisURL      string
+	RatingGRPCURL string
 }
 
 func LoadConfig() Config {
@@ -17,7 +18,8 @@ func LoadConfig() Config {
 		log.Fatal("Error loading .env file")
 	}
 	return Config{
-		RedisURL: getEnv("REDIS_URL"),
+		RedisURL:      getEnv("REDIS_URL"),
+		RatingGRPCURL: getEnv("RATING_GRPC_URL"),
 	}
 }
 
