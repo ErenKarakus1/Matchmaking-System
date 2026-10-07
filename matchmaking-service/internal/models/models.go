@@ -11,10 +11,11 @@ type CreateTicketRequest struct {
 }
 
 type Ticket struct {
-	TicketID  uuid.UUID `json:"ticket_id"`
-	PlayerID  uuid.UUID `json:"player_id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	TicketID  uuid.UUID  `json:"ticket_id"`
+	PlayerID  uuid.UUID  `json:"player_id"`
+	Status    string     `json:"status"`
+	MatchID   *uuid.UUID `json:"match_id,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 type Match struct {
